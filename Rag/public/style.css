@@ -1,0 +1,68 @@
+.css-ugcix4 {
+  color: antiquewhite;
+  background-color: black;
+}
+
+a[href*='https://github.com/Chainlit/chainlit']
+{
+  visibility: hidden;
+}
+
+img[src="http://localhost:8000/logo?theme=light"]
+{
+  visibility: hidden;
+}
+
+div[class="MuiToolbar-root MuiToolbar-gutters MuiToolbar-regular css-qsb7md"] {
+  background-color: rgb(229, 255, 216);
+}
+
+a[class="MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-sizeMedium MuiButton-textSizeMedium MuiButton-disableElevation MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-sizeMedium MuiButton-textSizeMedium MuiButton-disableElevation css-1vhtqje"] {
+  color: white;
+  background-color: rgb(92, 199, 133);
+}
+
+a[class="MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-sizeMedium MuiButton-textSizeMedium MuiButton-disableElevation MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-sizeMedium MuiButton-textSizeMedium MuiButton-disableElevation css-1vhtqje"]:hover {
+  background-color: rgb(52, 218, 52);
+}
+
+button[id="new-chat-button"] {
+  color: green;
+  border: 2px solid green;
+}
+
+button[id="new-chat-button"]:hover {
+  border: 0.5px solid green;
+}
+
+svg[class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-vubbuv"] {
+  color: green;
+}
+
+div[class="MuiAvatar-root MuiAvatar-circular MuiAvatar-colorDefault css-1ecxs1h"] {
+  background-color: green;
+}
+
+p[class="MuiTypography-root MuiTypography-body1 MuiTypography-noWrap css-gshcy7"] {
+  color: #29a29a;
+  font-weight: 800;
+}
+button[id="ask-upload-button"] {
+  background-color: green;
+}
+
+button[id="ask-upload-button"]:hover {
+  background-color: rgb(1, 171, 1);
+}
+/* 
+div[class="MuiBox-root css-17anmg8"] {
+  background-color: #343541;
+}
+
+div[class="message MuiBox-root css-1s3oi5q"] {
+  background-color: #343541;
+}
+
+div[class="markdown-body"] {
+  color: white;
+} */
