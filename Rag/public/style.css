@@ -10,7 +10,7 @@ a[href*='https://github.com/Chainlit/chainlit']
 
 img[src="http://localhost:8000/logo?theme=light"]
 {
-  visibility: hidden;
+  max-height: 50px !important;
 }
 
 div[class="MuiToolbar-root MuiToolbar-gutters MuiToolbar-regular css-qsb7md"] {
