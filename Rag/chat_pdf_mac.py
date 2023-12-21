@@ -14,6 +14,7 @@ from langchain.prompts.chat import (
 )
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.llms import HuggingFaceHub
+from langchain.chains.question_answering import load_qa_chain
 
 
 import os
@@ -95,32 +96,36 @@ async def on_chat_start():
     )
     callback_manager = CallbackManager([StreamingStdOutCallbackHandler()])
 
-    n_gpu_layers = 1  # Metal set to 1 is enough.
-    n_batch = 1200  # Should be between 1 and n_ctx, consider the amount of RAM of your Apple Silicon Chip.
+    n_gpu_layers = 60  # Metal set to 1 is enough.
+    n_batch = 500  # Should be between 1 and n_ctx, consider the amount of RAM of your Apple Silicon Chip.
     # Make sure the model path is correct for your system!
     llm = LlamaCpp(
-        model_path="../llama-2-7b-chat.Q5_K_M.gguf",
-        n_gpu_layers=n_gpu_layers,
+        model_path="./llama-2-7b-chat.Q5_K_M.gguf",
+        n_gpu_layershow=n_gpu_layers,
         n_batch=n_batch,
-        n_ctx=2500,
+        n_ctx=2048,
         # n_ctx=512,
-        f16_kv=True,  # MUST set to True, otherwise you will run into problem after a couple of calls
+        # f16_kv=True,  # MUST set to True, otherwise you will run into problem after a couple of calls
         callback_manager=callback_manager,
-        verbose=False,  # Verbose is required to pass to the callback manager
+        verbose=True,  # Verbose is required to pass to the callback manager
     )
     llm.client.verbose = False
+
         # Create a chain that uses the Chroma vector store
-    chain = RetrievalQAWithSourcesChain.from_chain_type(
-            # ChatOpenAI(temperature=0),
-            llm, 
-            chain_type="stuff",
-            retriever=docsearch.as_retriever(),
-        )
+    # chain = RetrievalQAWithSourcesChain.from_chain_type(
+    #         # ChatOpenAI(temperature=0),
+    #         llm, 
+    #         chain_type="stuff",
+    #         retriever = docsearch.as_retriever(),
+    #     )
     
+    chain = load_qa_chain(llm,  chain_type="stuff")
+
 
     # Save the metadata and texts in the user session
     cl.user_session.set("metadatas", metadatas)
     cl.user_session.set("texts", texts)
+    cl.user_session.set("docsearch", docsearch)
 
     # Let the user know that the system is ready
     msg.content = f"Processing `{file.name}` done. You can now ask questions!"
@@ -139,13 +144,15 @@ async def main(message: str):
     cb.answer_reached = True
 
     print(message.content)
+    
+    docsearch = cl.user_session.get("docsearch")
+    docs = docsearch.similarity_search(message.content)
+    print(docs)
 
-    res = await chain.acall(message.content, callbacks = [cb])
+    res = chain.run(input_documents = docs, question = message.content, callbacks = [cb])
     answer = res["answer"]
     sources = res["sources"].strip()
 
-    print(answer)
-    print(sources)
 
     source_elements = []
 

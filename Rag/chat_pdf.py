@@ -10,6 +10,7 @@ from langchain.prompts.chat import (
 )
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.llms import HuggingFaceHub
+from langchain.chains.question_answering import load_qa_chain
 
 
 import os
@@ -94,18 +95,17 @@ async def on_chat_start():
                          model_kwargs = {'temperature': 0.01, "max_new_tokens": 200})
 
     # Create a chain that uses the Chroma vector store
-    chain = RetrievalQAWithSourcesChain.from_chain_type(
-        # ChatOpenAI(temperature=0),
-        llm, 
-        chain_type="stuff",
-        retriever=docsearch.as_retriever(),
-    )
-    
+    # chain = RetrievalQAWithSourcesChain.from_chain_type(
+    #     llm, 
+    #     chain_type="stuff",
+    #     retriever=docsearch.as_retriever(),
+    # )
+    chain = load_qa_chain(llm,  chain_type="stuff")
 
     # Save the metadata and texts in the user session
     cl.user_session.set("metadatas", metadatas)
     cl.user_session.set("texts", texts)
-
+    cl.user_session.set("docsearch", docsearch)
     # Let the user know that the system is ready
     msg.content = f"Processing `{file.name}` done. You can now ask questions!"
     await msg.update()
@@ -123,8 +123,11 @@ async def main(message: str):
     cb.answer_reached = True
 
     print(message.content)
-
-    res = await chain.acall(message.content, callbacks = [cb])
+    docsearch = cl.user_session.get("docsearch")
+    docs = docsearch.similarity_search(message.content)
+    print(docs)
+    
+    res = chain.run(input_documents = docs, question = message.content, callbacks = [cb])
     answer = res["answer"]
     sources = res["sources"].strip()
 
