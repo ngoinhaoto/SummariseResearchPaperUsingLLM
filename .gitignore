@@ -1,2 +1,6 @@
 myenv
 llama-2-7b-chat.Q5_K_M.gguf
+./Rag/llama-2-7b-chat.Q5_K_M.gguf
+./Rag/__pycache__/
+./Rag/.env
+
