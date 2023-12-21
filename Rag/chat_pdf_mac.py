@@ -83,6 +83,7 @@ async def on_chat_start():
     for page_number in range(len(pdf.pages)):
         pdf_text += pdf.pages[page_number].extract_text()
     
+    # print(pdf_text)
     texts = text_splitter.split_text(pdf_text)
 
     # Create metadata for each chunk
@@ -103,7 +104,7 @@ async def on_chat_start():
         model_path="./llama-2-7b-chat.Q5_K_M.gguf",
         n_gpu_layershow=n_gpu_layers,
         n_batch=n_batch,
-        n_ctx=2048,
+        n_ctx=3000,
         # n_ctx=512,
         # f16_kv=True,  # MUST set to True, otherwise you will run into problem after a couple of calls
         callback_manager=callback_manager,
@@ -117,6 +118,7 @@ async def on_chat_start():
     #         llm, 
     #         chain_type="stuff",
     #         retriever = docsearch.as_retriever(),
+    #         max_tokens_limit = 1000,
     #     )
     
     chain = load_qa_chain(llm,  chain_type="stuff")
@@ -142,17 +144,15 @@ async def main(message: str):
         stream_final_answer = True, answer_prefix_tokens=["FINAL", "ANSWER"]
     )
     cb.answer_reached = True
-
-    print(message.content)
     
     docsearch = cl.user_session.get("docsearch")
     docs = docsearch.similarity_search(message.content)
     print(docs)
 
     res = chain.run(input_documents = docs, question = message.content, callbacks = [cb])
+    # res = await chain.acall(message.content, callbacks = [cb])
     answer = res["answer"]
     sources = res["sources"].strip()
-
 
     source_elements = []
 

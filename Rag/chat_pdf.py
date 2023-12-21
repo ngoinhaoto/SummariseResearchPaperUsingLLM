@@ -11,7 +11,7 @@ from langchain.prompts.chat import (
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.llms import HuggingFaceHub
 from langchain.chains.question_answering import load_qa_chain
-
+from utils import *
 
 import os
 import io
@@ -45,6 +45,9 @@ messages = [
     SystemMessagePromptTemplate.from_template(system_template),
     HumanMessagePromptTemplate.from_template("{question}")
 ]
+
+choices = ['summary', 'answer', 'sources']
+
 
 prompt = ChatPromptTemplate.from_messages(messages)
 chain_type_kwargs = {"prompt": prompt}
@@ -82,30 +85,37 @@ async def on_chat_start():
     texts = text_splitter.split_text(pdf_text)
 
     # Create metadata for each chunk
-    metadatas = [{"source": f"{i}-pl"} for i in range(len(texts))]
+    metadatas = [{"source": f"{i}-pl-0"} for i in range(len(texts))]
 
     # Create a Chroma vector store
-    embeddings = HuggingFaceEmbeddings(model_name= 'all-MiniLM-L6-v2')
-    # embeddings = OpenAIEmbeddings()
+    # embeddings = HuggingFaceEmbeddings(model_name= 'all-MiniLM-L6-v2')
+    embeddings = OpenAIEmbeddings()
     docsearch = await cl.make_async(Chroma.from_texts)(
-        texts, embeddings, metadatas=metadatas
+        texts, embeddings, metadatas=metadatas, persist_directory = './database'
     )
 
-    llm = HuggingFaceHub(repo_id = 'mistralai/Mistral-7B-v0.1',
-                         model_kwargs = {'temperature': 0.01, "max_new_tokens": 200})
+    retriever = docsearch.as_retriever(search_type = "similarity",
+                            search_kwargs = {"k": 3})
+
+    print(retriever.get_relevant_documents("ROLDEF"))
+    # llm = HuggingFaceHub(repo_id = 'mistralai/Mistral-7B-v0.1',
+    #                      model_kwargs = {'temperature': 0.01, "max_new_tokens": 200})
 
     # Create a chain that uses the Chroma vector store
-    # chain = RetrievalQAWithSourcesChain.from_chain_type(
-    #     llm, 
-    #     chain_type="stuff",
-    #     retriever=docsearch.as_retriever(),
-    # )
-    chain = load_qa_chain(llm,  chain_type="stuff")
+    chain = RetrievalQAWithSourcesChain.from_chain_type(
+        ChatOpenAI(temperature=0),
+        chain_type="stuff",
+        retriever= retriever,
+    )
+    # chain = load_qa_chain(llm,  chain_type="stuff")
+    id_sources = {'id': len(texts), 'num_sources': 1}
 
     # Save the metadata and texts in the user session
     cl.user_session.set("metadatas", metadatas)
     cl.user_session.set("texts", texts)
     cl.user_session.set("docsearch", docsearch)
+    cl.user_session.set("metadata_index", id_sources)
+    cl.user_session.set("embeddings", embeddings)
     # Let the user know that the system is ready
     msg.content = f"Processing `{file.name}` done. You can now ask questions!"
     await msg.update()
@@ -117,22 +127,27 @@ async def on_chat_start():
 async def main(message: str):
     
     chain = cl.user_session.get("chain")
+    id_sources = cl.user_session.get("metadata_index")
+    embeddings = cl.user_session.get("embeddings")
+
     cb = cl.AsyncLangchainCallbackHandler(
         stream_final_answer = True, answer_prefix_tokens=["FINAL", "ANSWER"]
     )
     cb.answer_reached = True
 
-    print(message.content)
-    docsearch = cl.user_session.get("docsearch")
-    docs = docsearch.similarity_search(message.content)
-    print(docs)
+    # print(message.content)
+    # docsearch = cl.user_session.get("docsearch")
+    # docs = docsearch.similarity_search(message.content)
+    # print(docs)
     
-    res = chain.run(input_documents = docs, question = message.content, callbacks = [cb])
+    # res = chain.run(input_documents = docs, question = message.content, callbacks = [cb])
+
+    res = await chain.acall(message.content, callbacks = [cb])
     answer = res["answer"]
     sources = res["sources"].strip()
 
     print(answer)
-    print(sources)
+    
 
     source_elements = []
 
@@ -145,6 +160,9 @@ async def main(message: str):
     if sources:
         found_sources = []
 
+        print(all_sources)
+        print(sources)
+
         for source in sources.split(","):
             source_name = source.strip().replace('.', "")
             source_name = source_name.replace(' ', '')
@@ -153,7 +171,9 @@ async def main(message: str):
                 index = all_sources.index(source_name)
             except ValueError:
                 continue
-
+            
+            print(source_name)
+            print(index)
 
             text = texts[index]
             found_sources.append(source_name)
@@ -178,4 +198,37 @@ async def main(message: str):
         final_answer.elements = source_elements
         await final_answer.send()
 
+
+    while True:
+        options1 = await cl.AskActionMessage(
+            content = "What action do you want the chatbot to perform?",
+            actions = [
+                cl.Action(name = "summary", value = "summary", display = "inline", text = "Get Summary"),
+                cl.Action(name = "query", value = "query", display = "inline", text = "Get Query"),
+                cl.Action(name = "sources", value = "sources", display = "inline", text = "Upload Sources"),
+            ],
+            timeout = 180
+        ).send()
+
+        print(options1.get('value'))
+        if options1.get('value')  == 'summary':
+            
+            texts_local, metadata_local = await summarize(ChatOpenAI(temperature = 0),
+                            id_sources = id_sources,
+                            embeddings = embeddings)
+            
+            texts.extend(texts_local)
+            metadatas.extend(metadata_local)
+            
+            id_sources['id'] += len(texts)
+            id_sources['num_sources'] += 1
+
+            cl.user_session.set("metadata_index", id_sources)
+            cl.user_session.set("texts", texts)
+            cl.user_session.set("metadatas", metadatas)
+
+        elif options1.get('value') == 'query':
+            break
+
         
+            
