@@ -25,7 +25,7 @@ source YourVenv/bin/activate
 Install all the libraries
 
 ```
-pip install -r requirement.txt
+pip install -r requirements.txt
 ```
 
 Use the program
