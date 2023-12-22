@@ -66,3 +66,25 @@ div[class="message MuiBox-root css-1s3oi5q"] {
 div[class="markdown-body"] {
   color: white;
 } */
+
+a[class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineAlways element-link css-1yrgl5i"] {
+  color: green;
+  text-decoration-color: green;
+}
+
+button[class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-disableElevation MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-disableElevation css-1vo0xo3"] {
+  color: green;
+  border: 2px solid green;
+}
+
+button[class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-disableElevation MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-disableElevation css-1vo0xo3"]:hover {
+  color: green;
+  border: 0.5px solid green;
+  background-color: rgb(211, 255, 211);
+}
+p[class="MuiTypography-root MuiTypography-body1 MuiTypography-noWrap css-acrxdp"] {
+  color: green;
+}
+div[class="MuiBox-root css-orz211"] {
+  background-color: rgb(0, 78, 0);
+}
