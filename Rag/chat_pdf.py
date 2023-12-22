@@ -294,7 +294,7 @@ async def main(message: str):
 @cl.on_chat_end
 def end():
     print("Good Bye!")
-    
     # This thing only works for Powershell Windows
     current_process = psutil.Process(os.getpid())
+    print("current process terminated: ", current_process)
     current_process.terminate()
