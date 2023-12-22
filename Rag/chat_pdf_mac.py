@@ -32,6 +32,20 @@ from dotenv import load_dotenv
 
 callback_manager = CallbackManager([StreamingStdOutCallbackHandler()])
 
+n_gpu_layers = 130  # Metal set to 1 is enough.
+n_batch = 1024  # Should be between 1 and n_ctx, consider the amount of RAM of your Apple Silicon Chip.
+# Make sure the model path is correct for your system!
+llm = LlamaCpp(
+    model_path="Rag/llama-2-7b-chat.Q5_K_M.gguf",
+    n_gpu_layers=n_gpu_layers,
+    n_batch=n_batch,
+    n_ctx=2048,
+    # n_ctx=512,
+    f16_kv=True,  # MUST set to True, otherwise you will run into problem after a couple of calls
+    callback_manager=callback_manager,
+    verbose=False,  # Verbose is required to pass to the callback manager
+)
+llm.client.verbose = False
 
 load_dotenv()
 
@@ -108,28 +122,14 @@ async def on_chat_start():
 
     retriever = docsearch.as_retriever(search_type = "similarity",
                             search_kwargs = {"k": 4})
-    
-    n_gpu_layers = 8  # Metal set to 1 is enough.
-    n_batch = 600  # Should be between 1 and n_ctx, consider the amount of RAM of your Apple Silicon Chip.
-    # Make sure the model path is correct for your system!
-    llm = LlamaCpp(
-        model_path="./llama-2-7b-chat.Q5_K_M.gguf",
-        n_gpu_layershow=n_gpu_layers,
-        n_batch=n_batch,
-        n_ctx=2048,
-        # n_ctx=512,
-        f16_kv=True,  # MUST set to True, otherwise you will run into problem after a couple of calls
-        callback_manager=callback_manager,
-        verbose=True,  # Verbose is required to pass to the callback manager
-    )
 
-    chain = RetrievalQAWithSourcesChain.from_chain_type(
-        llm,
-        chain_type="stuff",
-        retriever= retriever,
-    )
+    # chain = RetrievalQAWithSourcesChain.from_chain_type(
+    #     llm,
+    #     chain_type="stuff",
+    #     retriever= retriever,
+    # )
 
-    # chain = load_qa_chain(llm,  chain_type="stuff")
+    chain = load_qa_chain(llm,  chain_type="stuff")
     id_sources = {'id': len(texts), 'num_sources': 1}
 
     # Save the metadata and texts in the user session
@@ -165,15 +165,15 @@ async def main(message: str):
     cb.answer_reached = True
 
     # print(message.content)
-    # docsearch = cl.user_session.get("docsearch")
-    # docs = docsearch.similarity_search(message.content)
+    docsearch = cl.user_session.get("docsearch")
+    docs = docsearch.similarity_search(message.content)
     # print(docs)
     
-    # res = chain.run(input_documents = docs, question = message.content, callbacks = [cb])
-
-    res = await chain.acall(message.content, callbacks = [cb])
-    answer = res["answer"]
-    sources = res["sources"].strip()
+    res = chain.run(input_documents = docs, question = message.content, callbacks = [cb])
+    print(res)
+    # res = await chain.acall(message.content, callbacks = [cb])
+    answer = res
+    # sources = res["sources"].strip()
 
     # print(answer)
     
@@ -186,31 +186,31 @@ async def main(message: str):
     texts = cl.user_session.get("texts")
 
 
-    if sources:
-        found_sources = []
+    # if sources:
+    #     found_sources = []
 
-        for source in sources.split(","):
-            source_name = source.strip().replace('.', "")
-            source_name = source_name.replace(' ', '')
+    #     for source in sources.split(","):
+    #         source_name = source.strip().replace('.', "")
+    #         source_name = source_name.replace(' ', '')
 
-            try:
-                index = all_sources.index(source_name)
-            except ValueError:
-                continue
+    #         try:
+    #             index = all_sources.index(source_name)
+    #         except ValueError:
+    #             continue
             
-            print(source_name)
-            print(index)
+    #         print(source_name)
+    #         print(index)
 
-            text = texts[index]
-            found_sources.append(source_name)
+    #         text = texts[index]
+    #         found_sources.append(source_name)
 
-            # Create the text element referenced in the message
-            source_elements.append(cl.Text(content=text, name=source_name))
+    #         # Create the text element referenced in the message
+    #         source_elements.append(cl.Text(content=text, name=source_name))
 
-        if found_sources:
-            answer += f"\nSources: {', '.join(found_sources)}"
-        else:
-            answer += "\nNo sources found"
+    #     if found_sources:
+    #         answer += f"\nSources: {', '.join(found_sources)}"
+    #     else:
+    #         answer += "\nNo sources found"
 
     final_answer = cl.Message(content = "")
     if cb.has_streamed_final_answer:
