@@ -74,7 +74,7 @@ async def on_chat_start():
             content = "Please upload the PDF File to begin!",
             accept = ['application/pdf'],
             max_size_mb = 20,
-            timeout = 180
+            timeout = 1000
         ).send()
 
     file = files[0]
@@ -103,10 +103,7 @@ async def on_chat_start():
     )
 
     retriever = docsearch.as_retriever(search_type = "similarity",
-                            search_kwargs = {"k": 3})
-
-    print(retriever.get_relevant_documents("ROLDEF"))
-   
+                            search_kwargs = {"k": 3})   
 
     llm = ChatOpenAI(temperature = 0.1)
     # Create a chain that uses the Chroma vector store
@@ -151,12 +148,6 @@ async def main(message: str):
     )
     cb.answer_reached = True
 
-    # print(message.content)
-    # docsearch = cl.user_session.get("docsearch")
-    # docs = docsearch.similarity_search(message.content)
-    # print(docs)
-    
-    # res = chain.run(input_documents = docs, question = message.content, callbacks = [cb])
 
     res = await chain.acall(message.content, callbacks = [cb])
     answer = res["answer"]
@@ -220,7 +211,7 @@ async def main(message: str):
                 cl.Action(name = "query", value = "query", display = "inline", text = "Get Query"),
                 cl.Action(name = "upload", value = "upload", display = "inline", text = "Upload Sources"),
             ],
-            timeout = 180
+            timeout = 1000
         ).send()
 
         print(options1.get('value'))
@@ -242,7 +233,7 @@ async def main(message: str):
             options2  = await cl.AskActionMessage(
                 content = "Choose the file you have uploaded",
                 actions = list_actions,
-                timeout = 180
+                timeout = 1000
             ).send()
 
             if options2.get('value') == 'other_file':
@@ -294,7 +285,9 @@ async def main(message: str):
 @cl.on_chat_end
 def end():
     print("Good Bye!")
-    # This thing only works for Powershell Windows
+
     current_process = psutil.Process(os.getpid())
     print("current process terminated: ", current_process)
+    # This will kill the process in Powershell Windows
+    # IN Unix operating systems, it sends the signal SIGTERM to the process
     current_process.terminate()
