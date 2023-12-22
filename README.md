@@ -52,6 +52,8 @@ link to download llama model: https://huggingface.co/TheBloke/Llama-2-7B-Chat-GG
 
 For the weight, download this THIS: <img width="633" alt="image" src="https://github.com/ngoinhaoto/SummariseResearchPaperUsingLLM/assets/68233426/7e850c54-a520-44bc-a15e-412bdc6a8ed9">
 
-The ipynb file is for MAC ARM Chip, using windows, changes the llm init code to, it just contains the code of us messing around with the model.
+The ipynb file is for MAC ARM Chip which just contains the code of us messing around with the model. If you want to use it, you might have to modify the LLM init part accordingly. Please reference to [this](https://python.langchain.com/docs/integrations/llms/llamacpp)
+
+
 
 
