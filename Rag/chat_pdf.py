@@ -20,6 +20,13 @@ import PyPDF2
 from io import BytesIO
 
 from dotenv import load_dotenv
+import shutil
+import subprocess
+import psutil
+import platform
+
+
+print("The operating system is:", platform.system())
 
 load_dotenv()
 
@@ -85,7 +92,8 @@ async def on_chat_start():
     texts = text_splitter.split_text(pdf_text)
 
     # Create metadata for each chunk
-    metadatas = [{"source": f"{i}-pl-0"} for i in range(len(texts))]
+    metadatas = [{"source": f"{i}-pl-0", "documents": file.name} for i in range(len(texts))]
+    list_docs = [file.name]
 
     # Create a Chroma vector store
     # embeddings = HuggingFaceEmbeddings(model_name= 'all-MiniLM-L6-v2')
@@ -98,12 +106,12 @@ async def on_chat_start():
                             search_kwargs = {"k": 3})
 
     print(retriever.get_relevant_documents("ROLDEF"))
-    # llm = HuggingFaceHub(repo_id = 'mistralai/Mistral-7B-v0.1',
-    #                      model_kwargs = {'temperature': 0.01, "max_new_tokens": 200})
+   
 
+    llm = ChatOpenAI(temperature = 0.1)
     # Create a chain that uses the Chroma vector store
     chain = RetrievalQAWithSourcesChain.from_chain_type(
-        ChatOpenAI(temperature=0),
+        llm,
         chain_type="stuff",
         retriever= retriever,
     )
@@ -111,6 +119,8 @@ async def on_chat_start():
     id_sources = {'id': len(texts), 'num_sources': 1}
 
     # Save the metadata and texts in the user session
+    cl.user_session.set("llm", llm)
+    cl.user_session.set("list_docs", list_docs)
     cl.user_session.set("metadatas", metadatas)
     cl.user_session.set("texts", texts)
     cl.user_session.set("docsearch", docsearch)
@@ -126,9 +136,15 @@ async def on_chat_start():
 @cl.on_message
 async def main(message: str):
     
+    llm = cl.user_session.get("llm")
     chain = cl.user_session.get("chain")
+    list_docs = cl.user_session.get("list_docs")
     id_sources = cl.user_session.get("metadata_index")
     embeddings = cl.user_session.get("embeddings")
+
+    print(list_docs)
+
+    
 
     cb = cl.AsyncLangchainCallbackHandler(
         stream_final_answer = True, answer_prefix_tokens=["FINAL", "ANSWER"]
@@ -146,7 +162,7 @@ async def main(message: str):
     answer = res["answer"]
     sources = res["sources"].strip()
 
-    print(answer)
+    # print(answer)
     
 
     source_elements = []
@@ -159,9 +175,6 @@ async def main(message: str):
 
     if sources:
         found_sources = []
-
-        print(all_sources)
-        print(sources)
 
         for source in sources.split(","):
             source_name = source.strip().replace('.', "")
@@ -205,30 +218,83 @@ async def main(message: str):
             actions = [
                 cl.Action(name = "summary", value = "summary", display = "inline", text = "Get Summary"),
                 cl.Action(name = "query", value = "query", display = "inline", text = "Get Query"),
-                cl.Action(name = "sources", value = "sources", display = "inline", text = "Upload Sources"),
+                cl.Action(name = "upload", value = "upload", display = "inline", text = "Upload Sources"),
             ],
             timeout = 180
         ).send()
 
         print(options1.get('value'))
         if options1.get('value')  == 'summary':
+
+
+            list_actions = []
+            for i in range(len(list_docs)):
+                list_actions.append(
+                    cl.Action(name = list_docs[i], value = f"{i}", display = "inline", text = list_docs[i])
+                )
+                
+            list_actions.append(
+                cl.Action(name = "other_file", value = "other_file", 
+                                display = "inline",
+                                text = "Upload another file")
+            )
             
-            texts_local, metadata_local = await summarize(ChatOpenAI(temperature = 0),
-                            id_sources = id_sources,
-                            embeddings = embeddings)
+            options2  = await cl.AskActionMessage(
+                content = "Choose the file you have uploaded",
+                actions = list_actions,
+                timeout = 180
+            ).send()
+
+            if options2.get('value') == 'other_file':
+                
+
+                texts_local, metadata_local, filename = await summarize(
+                                llm,
+                                id_sources = id_sources,
+                                embeddings = embeddings)
+                
+                texts.extend(texts_local)
+                metadatas.extend(metadata_local)
+                list_docs.append(filename)
+
+                id_sources['id'] += len(texts)
+                id_sources['num_sources'] += 1
+
+                cl.user_session.set("metadata_index", id_sources)
+                cl.user_session.set("texts", texts)
+                cl.user_session.set("metadatas", metadatas)
+                cl.user_session.set("list_docs", list_docs)
+
+            else:
+                docs = list_docs[int(options2.get('value'))]
+                await summarize_one_file(llm, docs)
+
+
+        elif options1.get('value') == 'query':
+            break
+
+        elif options1.get('value') == 'upload':
+            texts_local, metadata_local, filename = await upload_file(
+                                id_sources = id_sources,
+                                embeddings = embeddings)
             
             texts.extend(texts_local)
             metadatas.extend(metadata_local)
-            
+            list_docs.append(filename)
+
             id_sources['id'] += len(texts)
             id_sources['num_sources'] += 1
 
             cl.user_session.set("metadata_index", id_sources)
             cl.user_session.set("texts", texts)
             cl.user_session.set("metadatas", metadatas)
-
-        elif options1.get('value') == 'query':
-            break
-
+            cl.user_session.set("list_docs", list_docs)
         
-            
+        
+@cl.on_chat_end
+def end():
+    print("Good Bye!")
+    
+    # This thing only works for Powershell Windows
+    current_process = psutil.Process(os.getpid())
+    current_process.terminate()
