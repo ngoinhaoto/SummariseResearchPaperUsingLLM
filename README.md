@@ -34,7 +34,7 @@ Use the program
 cd /Rag
 ```
 
-Add your API Key in the _**.env ** _ file (provided in a Google Doc file in the Google Drive Folder)
+Add your API Key in the **.env** file (provided in a Google Doc file in the Google Drive Folder)
 
 
 
