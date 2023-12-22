@@ -3,7 +3,7 @@ import os
 import shutil
 import platform
 
-chainlit_command = 'chainlit run chat_pdf_mac.py '
+chainlit_command = 'chainlit run chat_pdf_llama.py '
 
 print("Ur running on: ", platform.system())
 
