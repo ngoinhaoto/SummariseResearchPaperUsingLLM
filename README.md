@@ -1,6 +1,6 @@
+# Summarise Research Using LLM Chatbot Project for the Final Project of VNUK's Artificial Intelligence Course
 
-To use this. Clone this project into Visual Studio Code or your IDE.
-
+To use this. Clone this project into Visual Studio Code or your IDE then unzip the file and cd to the directory
 ```
 cd SummariseResearchPaperUsingLLM
 ```
